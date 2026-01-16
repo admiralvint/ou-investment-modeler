@@ -104,11 +104,20 @@ def run_simulation():
         
         # Parse ETFs
         etf_list = []
-        for i in range(1, 4):
-            isin = params.get(f'etf{i}_isin', '').strip()
-            allocation = float(params.get(f'etf{i}_allocation', 0))
-            if isin and allocation > 0:
-                etf_list.append((isin, allocation))
+        if 'etfs' in params and isinstance(params['etfs'], list):
+            # Dynamic list from Phase 3
+            for item in params['etfs']:
+                isin = item.get('isin', '').strip()
+                allocation = float(item.get('allocation', 0))
+                if isin and allocation > 0:
+                    etf_list.append((isin, allocation))
+        else:
+            # Legacy fallback
+            for i in range(1, 4):
+                isin = params.get(f'etf{i}_isin', '').strip()
+                allocation = float(item.get(f'etf{i}_allocation', 0))
+                if isin and allocation > 0:
+                    etf_list.append((isin, allocation))
         
         # Validate portfolio
         is_valid, error_msg = validate_portfolio(etf_list)
@@ -175,7 +184,11 @@ def run_simulation():
             start_month=start_month,
             end_year=end_year,
             starting_capital=starting_capital,
-            starting_loans=starting_loans
+            starting_loans=starting_loans,
+            annual_costs=float(params.get('annual_costs', 0)),
+            withdrawal_rate=float(params.get('withdrawal_rate', 0)) / 100,
+            withdrawal_start_year=int(params.get('withdrawal_start_year', 2035)),
+            withdrawal_mode=params.get('withdrawal_mode', 'loan')
         )
         
         # Calculate loan evolution
@@ -184,7 +197,9 @@ def run_simulation():
             contributions=contributions,
             years=result.years,
             rental=rental,
-            start_month=start_month
+            start_month=start_month,
+            payouts=result.payouts_p50,
+            withdrawal_mode=params.get('withdrawal_mode', 'dividend')
         )
         
         # Calculate total loans per year
@@ -199,27 +214,36 @@ def run_simulation():
         # Calculate balance breakdown using Monte Carlo P50 values
         balance_breakdown = []
         annual_contrib = sum(c.monthly_amount * 12 for c in contributions)
+        annual_costs_val = float(params.get('annual_costs', 0))
         rental_annual = rental.monthly_income * 12 if rental else 0
         mortgage_deduction = (rental.mart_share + rental.kerli_share) if rental and rental.sell else 0
         
         for i, year in enumerate(result.years):
             row = {'year': year}
             
-            # Start balance: previous year's P50 end balance (or starting capital for year 0)
+            # Start balance
             if i == 0:
                 row['start_balance'] = round(starting_capital, 0)
             else:
                 row['start_balance'] = round(result.p50[i-1], 0)
             
-            # Contributions
+            # Contributions & Costs for this year
             if year == result.years[0]:
                 months_first_year = 12 - start_month + 1
                 year_contrib = sum(c.monthly_amount for c in contributions) * months_first_year
+                year_costs = (annual_costs_val / 12) * months_first_year
             else:
                 year_contrib = annual_contrib
-            row['contributions'] = round(year_contrib, 0)
+                year_costs = annual_costs_val
             
-            # Rental income (only if repaying mortgage from company and year >= repayment_year)
+            row['contributions'] = round(year_contrib, 0)
+            row['costs'] = round(-year_costs, 0)  # Store as negative for display
+            
+            # Payouts (Withdrawals) - P50
+            year_payout = result.payouts_p50[i]
+            row['payouts'] = round(-year_payout, 0) # Store as negative
+            
+            # Rental income
             if rental and rental.include and rental.sell and year >= rental.sale_year:
                 if year == rental.sale_year:
                      row['rental_income'] = round(rental.monthly_income * 6, 0) # July-Dec
@@ -234,11 +258,14 @@ def run_simulation():
             else:
                 row['mortgage_deduction'] = 0
             
-            # End balance from Monte Carlo P50
+            # End balance
             row['end_balance'] = round(result.p50[i], 0)
             
             # Back-calculate effective investment return
-            known_changes = row['contributions'] + row['rental_income'] + row['mortgage_deduction']
+            # known_changes = contributions + rental + mortgage_deduction + costs + payouts
+            known_changes = (row['contributions'] + row['rental_income'] + 
+                           row['mortgage_deduction'] + row['costs'] + row['payouts'])
+            
             row['investment_return'] = round(row['end_balance'] - row['start_balance'] - known_changes, 0)
             
             balance_breakdown.append(row)

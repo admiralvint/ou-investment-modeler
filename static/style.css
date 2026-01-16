@@ -595,7 +595,104 @@ footer {
     text-align: center;
     color: var(--text-secondary);
     font-size: 0.85rem;
-    margin-top: 2rem;
-    padding-top: 1rem;
     border-top: 1px solid var(--border-color);
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    flex: 1;
+}
+
+.tab-btn:hover {
+    background: var(--bg-secondary);
+}
+
+.tab-btn.active {
+    background: var(--primary-color);
+    background: linear-gradient(90deg, var(--accent-blue), #2563eb);
+    color: white;
+    border-color: transparent;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Dynamic Portfolio */
+.investment-row {
+    position: relative;
+    padding-right: 30px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+}
+
+.investment-row:last-child {
+    border-bottom: none;
+}
+
+.remove-inv-btn {
+    position: absolute;
+    right: -10px;
+    top: 32px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: color 0.2s;
+    padding: 5px;
+}
+
+.remove-inv-btn:hover {
+    color: var(--accent-red);
+}
+
+.add-btn {
+    width: 100%;
+    padding: 0.8rem;
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    color: var(--accent-blue);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 10px;
+}
+
+.add-btn:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--accent-blue);
 }

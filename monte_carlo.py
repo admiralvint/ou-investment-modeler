@@ -22,6 +22,7 @@ class SimulationResult:
     p98: list[float]  # 98th percentile (extreme optimistic)
     mean: list[float]  # Mean across all simulations
     percentiles: dict[str, list[float]]  # Full percentile range p0-p100
+    payouts_p50: list[float]  # Median annual payout
     all_paths: Optional[np.ndarray] = None  # Full simulation data if requested
     
     def to_dict(self, include_paths: bool = False) -> dict:
@@ -34,6 +35,7 @@ class SimulationResult:
             'p90': [round(v, 2) for v in self.p90],
             'p98': [round(v, 2) for v in self.p98],
             'mean': [round(v, 2) for v in self.mean],
+            'payouts_p50': [round(v, 2) for v in self.payouts_p50],
             'percentiles': {k: [round(v, 2) for v in vals] for k, vals in self.percentiles.items()}
         }
         if include_paths and self.all_paths is not None:
@@ -147,7 +149,11 @@ class MonteCarloSimulator:
         start_month: int = 1,  # 1=January, 12=December
         end_year: int = 2040,
         starting_capital: float = 82964.0,
-        starting_loans: Optional[dict[str, float]] = None
+        starting_loans: Optional[dict[str, float]] = None,
+        annual_costs: float = 0.0,
+        withdrawal_rate: float = 0.0,  # 0.04 = 4%
+        withdrawal_start_year: int = 2035,
+        withdrawal_mode: str = 'loan'  # 'loan' or 'dividend'
     ) -> SimulationResult:
         """
         Run Monte Carlo simulation.
@@ -168,6 +174,7 @@ class MonteCarloSimulator:
         # Initialize paths array: (n_simulations, n_years)
         # Store ending balance for each year
         paths = np.zeros((self.n_simulations, n_years))
+        payouts_paths = np.zeros((self.n_simulations, n_years))
         
         # Annual contribution total
         annual_contribution = sum(c.monthly_amount * 12 for c in self.contributions)
@@ -186,18 +193,34 @@ class MonteCarloSimulator:
                 # First year: start from start_month, otherwise full year
                 first_month = (start_month - 1) if year == start_year else 0
                 
+                # Calculate annual withdrawal budget for this year
+                year_withdrawal_budget = 0.0
+                if year >= withdrawal_start_year and withdrawal_rate > 0:
+                    year_withdrawal_budget = balance * withdrawal_rate
+                
+                year_payout_gross = 0.0
+                
                 for month in range(first_month, 12):
                     # Monthly contribution (same for all months)
                     monthly_contrib = sum(c.monthly_amount for c in self.contributions)
                     
                     balance += monthly_contrib
                     
+                    # Deduct monthly share of annual costs
+                    balance -= (annual_costs / 12)
+                    
+                    # Deduct monthly withdrawal
+                    if year_withdrawal_budget > 0:
+                        monthly_wd = year_withdrawal_budget / 12
+                        balance -= monthly_wd
+                        year_payout_gross += monthly_wd
+                    
                     # Rental income logic (mid-year timing for sale year):
                     # If sell=True (OÜ pays mortgage): OÜ gets full rental income after repayment
                     # If sell=False (personal payment): OÜ gets nothing
                     if self.rental and self.rental.include and self.rental.sell:
                         if year > self.rental.sale_year:
-                            # Full year after repayment - get all months
+                             # Full year after repayment - get all months
                             balance += self.rental.monthly_income
                         elif year == self.rental.sale_year and month >= 6:
                             # Sale year - rental income starts from July (month 6)
@@ -215,6 +238,15 @@ class MonteCarloSimulator:
                 
                 # Store ending balance
                 paths[sim, year_idx] = balance
+                
+                # Store annual payout (Net)
+                if withdrawal_mode == 'dividend':
+                    # 22/78 rule: Net = Gross * 0.78 (approx)
+                    # Actually if 22/78 is ratio, then Net = Gross * (78/100)
+                    payouts_paths[sim, year_idx] = year_payout_gross * 0.78
+                else:
+                     # Loan repayment: Net = Gross
+                    payouts_paths[sim, year_idx] = year_payout_gross
         
         # Calculate percentiles
         p2 = np.percentile(paths, 2, axis=0).tolist()
@@ -223,6 +255,8 @@ class MonteCarloSimulator:
         p90 = np.percentile(paths, 90, axis=0).tolist()
         p98 = np.percentile(paths, 98, axis=0).tolist()
         mean = np.mean(paths, axis=0).tolist()
+        
+        payouts_p50 = np.percentile(payouts_paths, 50, axis=0).tolist()
         
         # Calculate full range of percentiles
         percentiles = {}
@@ -241,6 +275,7 @@ class MonteCarloSimulator:
             p98=p98,
             mean=mean,
             percentiles=percentiles,
+            payouts_p50=payouts_p50,
             all_paths=paths
         )
 
@@ -250,7 +285,9 @@ def calculate_loan_evolution(
     contributions: list[Contribution],
     years: list[int],
     rental: Optional[RentalProperty] = None,
-    start_month: int = 1
+    start_month: int = 1,
+    payouts: list[float] = None,
+    withdrawal_mode: str = 'dividend'
 ) -> dict[str, list[float]]:
     """
     Calculate evolution of loans (principal + contributions).
@@ -270,27 +307,43 @@ def calculate_loan_evolution(
     
     loan_evolution = {name: [] for name in starting_loans.keys()}
     
-    for person, start_loan in starting_loans.items():
-        loan = start_loan
-        monthly = contrib_map.get(person, 0)
-        
-        for year_idx, year in enumerate(years):
-            # Calculate contribution months for this year
-            months = 12
-            if year == years[0]:
-                months = 12 - start_month + 1
-            
-            loan += monthly * months
-            
-            # Rental repayment (reduce Mart and Kerli loans) - ONLY if sell=True
-            if rental and rental.include and rental.sell and year == rental.sale_year:
-                if person == 'Mart':
-                    loan -= rental.mart_share
-                elif person == 'Kerli':
-                    loan -= rental.kerli_share
-            
-            loan_evolution[person].append(loan)
+    # Initialize current loans
+    current_loans = starting_loans.copy()
     
+    for year_idx, year in enumerate(years):
+        # Calculate contribution months for this year
+        months = 12
+        if year == years[0]:
+            months = 12 - start_month + 1
+        
+        # 1. Add Contributions
+        for person in current_loans:
+            monthly = contrib_map.get(person, 0)
+            current_loans[person] += monthly * months
+            
+        # 2. Subtract Rental Repayment (Mart/Kerli)
+        if rental and rental.include and rental.sell and year == rental.sale_year:
+            if 'Mart' in current_loans:
+                current_loans['Mart'] -= rental.mart_share
+            if 'Kerli' in current_loans:
+                current_loans['Kerli'] -= rental.kerli_share
+        
+        # 3. Subtract Loan Repayment (Withdrawals) if mode='loan'
+        if withdrawal_mode == 'loan' and payouts and year_idx < len(payouts):
+            payout_amount = payouts[year_idx]
+            if payout_amount > 0:
+                total_loan = sum(current_loans.values())
+                if total_loan > 0:
+                    # Reduce properly proportionally
+                    # If payout > total_loan, we reduce to 0 (excess is dividend logic, but here we just zero out)
+                    factor = max(0.0, (total_loan - payout_amount) / total_loan)
+                    for person in current_loans:
+                        current_loans[person] *= factor
+        
+        # Store snapshot
+        for person in current_loans:
+            loan_evolution[person].append(current_loans[person])
+            
     return loan_evolution
 
 

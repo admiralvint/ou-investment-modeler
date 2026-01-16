@@ -47,6 +47,7 @@ class ETFData:
             'annual_return': round(self.annual_return * 100, 2),  # As percentage
             'annual_volatility': round(self.annual_volatility * 100, 2),
             'years_of_data': self.years_of_data,
+            'years': self.years_of_data, # Alias for frontend
             'last_price': round(self.last_price, 2),
             'currency': self.currency
         }
@@ -67,7 +68,7 @@ def isin_to_ticker(isin: str) -> Optional[str]:
 
 
 @lru_cache(maxsize=20)
-def fetch_etf_data(isin: str, years: int = 10) -> Optional[ETFData]:
+def fetch_etf_data(isin: str, years: int = 15) -> Optional[ETFData]:
     """
     Fetch ETF data from Yahoo Finance.
     
