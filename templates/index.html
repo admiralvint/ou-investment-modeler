@@ -714,51 +714,9 @@
             document.getElementById('total_loans').textContent = '€' + totalLoans.toLocaleString();
         }
 
-        // Update allocation status
-        function updateAllocationStatus() {
-            const alloc1 = parseFloat(document.getElementById('etf1_allocation').value) || 0;
-            const alloc2 = parseFloat(document.getElementById('etf2_allocation').value) || 0;
-            const alloc3 = parseFloat(document.getElementById('etf3_allocation').value) || 0;
-            const total = alloc1 + alloc2 + alloc3;
 
-            const statusEl = document.getElementById('allocation_status');
-            document.getElementById('total_allocation').textContent = total + '%';
 
-            if (total === 100) {
-                statusEl.className = 'allocation-status valid';
-            } else {
-                statusEl.className = 'allocation-status invalid';
-            }
-        }
 
-        // Fetch ETF info
-        async function fetchETFInfo(num) {
-            const isin = document.getElementById(`etf${num}_isin`).value.trim();
-            const nameEl = document.getElementById(`etf${num}_name`);
-
-            if (!isin) {
-                nameEl.textContent = '';
-                return;
-            }
-
-            nameEl.textContent = 'Laadin...';
-
-            try {
-                const response = await fetch(`/api/etf/${isin}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    nameEl.textContent = `${data.data.name} (${data.data.annual_return}% / ${data.data.annual_volatility}% vol)`;
-                    nameEl.className = 'etf-name valid';
-                } else {
-                    nameEl.textContent = 'ETF ei leitud';
-                    nameEl.className = 'etf-name invalid';
-                }
-            } catch (e) {
-                nameEl.textContent = 'Viga laadimisel';
-                nameEl.className = 'etf-name invalid';
-            }
-        }
 
         // Toggle rental options
         function toggleRentalOptions() {
@@ -830,29 +788,29 @@
                 contribution_change_year: document.getElementById('contribution_change_year').value,
                 contribution_change_factor: document.getElementById('contribution_change_factor').value
             };
-        };
 
-        try {
-            const response = await fetch('/api/simulate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params)
-            });
+            try {
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
 
-            const data = await response.json();
+                const data = await response.json();
 
-            if (data.success) {
-                displayResults(data);
-            } else {
-                error.textContent = 'Viga: ' + data.error;
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    error.textContent = 'Viga: ' + data.error;
+                    error.classList.remove('hidden');
+                }
+            } catch (e) {
+                error.textContent = 'Ühenduse viga: ' + e.message;
                 error.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                loading.classList.add('hidden');
             }
-        } catch (e) {
-            error.textContent = 'Ühenduse viga: ' + e.message;
-            error.classList.remove('hidden');
-        } finally {
-            btn.disabled = false;
-            loading.classList.add('hidden');
         }
 
 
