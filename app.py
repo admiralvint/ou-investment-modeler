@@ -202,7 +202,7 @@ def run_simulation():
             rental=rental,
             start_month=start_month,
             payouts=result.payouts_p50,
-            payouts=result.payouts_p50,
+
             withdrawal_mode=params.get('withdrawal_mode', 'dividend'),
             contribution_end_year=int(params['contribution_end_year']) if params.get('contribution_end_year') else None,
             contribution_change_year=int(params['contribution_change_year']) if params.get('contribution_change_year') else None,
