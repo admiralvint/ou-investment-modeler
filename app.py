@@ -188,7 +188,10 @@ def run_simulation():
             annual_costs=float(params.get('annual_costs', 0)),
             withdrawal_rate=float(params.get('withdrawal_rate', 0)) / 100,
             withdrawal_start_year=int(params.get('withdrawal_start_year', 2035)),
-            withdrawal_mode=params.get('withdrawal_mode', 'loan')
+            withdrawal_mode=params.get('withdrawal_mode', 'loan'),
+            contribution_end_year=int(params['contribution_end_year']) if params.get('contribution_end_year') else None,
+            contribution_change_year=int(params['contribution_change_year']) if params.get('contribution_change_year') else None,
+            contribution_change_factor=float(params.get('contribution_change_factor', 1.0))
         )
         
         # Calculate loan evolution
@@ -199,7 +202,11 @@ def run_simulation():
             rental=rental,
             start_month=start_month,
             payouts=result.payouts_p50,
-            withdrawal_mode=params.get('withdrawal_mode', 'dividend')
+            payouts=result.payouts_p50,
+            withdrawal_mode=params.get('withdrawal_mode', 'dividend'),
+            contribution_end_year=int(params['contribution_end_year']) if params.get('contribution_end_year') else None,
+            contribution_change_year=int(params['contribution_change_year']) if params.get('contribution_change_year') else None,
+            contribution_change_factor=float(params.get('contribution_change_factor', 1.0))
         )
         
         # Calculate total loans per year

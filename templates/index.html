@@ -77,6 +77,33 @@
                         </section>
 
                         <section class="card">
+                            <h2>🛑 Sissemaksete peatamine</h2>
+                            <p class="hint">Vali aasta, millal lõpetada igakuised lisamised (Coast FIRE).</p>
+                            <div class="input-group">
+                                <label for="contribution_end_year">Lõpeta sissemaksed aastal (valikuline)</label>
+                                <input type="number" id="contribution_end_year" placeholder="nt 2035" min="2026"
+                                    max="2060">
+                            </div>
+                        </section>
+
+                        <section class="card">
+                            <h2>🔀 Muuda sissemakset</h2>
+                            <p class="hint">Vali aasta, millest alates sissemaksed muutuvad (nt poole väiksemaks).</p>
+                            <div class="input-group inline">
+                                <label for="contribution_change_year">Muutuse aasta</label>
+                                <input type="number" id="contribution_change_year" placeholder="nt 2030" min="2026"
+                                    max="2060">
+                            </div>
+                            <div class="input-group inline">
+                                <label for="contribution_change_factor">Uus koormus (kordaja)</label>
+                                <input type="number" id="contribution_change_factor" placeholder="1.0" value="1.0"
+                                    step="0.1" min="0">
+                            </div>
+                            <p class="hint" style="font-size: 0.8em;">Nt 0.5 = 50% sissemaksest, 0.0 = lõpeta maksmine.
+                            </p>
+                        </section>
+
+                        <section class="card">
                             <div class="total-display">
                                 Sissemaksed kokku: <span id="total_monthly">€0</span>/kuu
                             </div>
@@ -797,32 +824,37 @@
                 annual_costs: totalAnnualCosts,
                 withdrawal_rate: document.getElementById('plan_withdrawals').checked ? document.getElementById('withdrawal_rate').value : 0,
                 withdrawal_start_year: document.getElementById('withdrawal_start_year').value,
-                withdrawal_mode: document.querySelector('input[name="withdrawal_mode"]:checked').value
+                withdrawal_mode: document.querySelector('input[name="withdrawal_mode"]:checked').value,
+                // Contribution Controls
+                contribution_end_year: document.getElementById('contribution_end_year').value,
+                contribution_change_year: document.getElementById('contribution_change_year').value,
+                contribution_change_factor: document.getElementById('contribution_change_factor').value
             };
+        };
 
-            try {
-                const response = await fetch('/api/simulate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params)
-                });
+        try {
+            const response = await fetch('/api/simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(params)
+            });
 
-                const data = await response.json();
+            const data = await response.json();
 
-                if (data.success) {
-                    displayResults(data);
-                } else {
-                    error.textContent = 'Viga: ' + data.error;
-                    error.classList.remove('hidden');
-                }
-            } catch (e) {
-                error.textContent = 'Ühenduse viga: ' + e.message;
+            if (data.success) {
+                displayResults(data);
+            } else {
+                error.textContent = 'Viga: ' + data.error;
                 error.classList.remove('hidden');
-            } finally {
-                btn.disabled = false;
-                loading.classList.add('hidden');
             }
+        } catch (e) {
+            error.textContent = 'Ühenduse viga: ' + e.message;
+            error.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            loading.classList.add('hidden');
         }
+
 
         // Display simulation results
         function displayResults(data) {

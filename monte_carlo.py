@@ -153,7 +153,12 @@ class MonteCarloSimulator:
         annual_costs: float = 0.0,
         withdrawal_rate: float = 0.0,  # 0.04 = 4%
         withdrawal_start_year: int = 2035,
-        withdrawal_mode: str = 'loan'  # 'loan' or 'dividend'
+        withdrawal_rate: float = 0.0,  # 0.04 = 4%
+        withdrawal_start_year: int = 2035,
+        withdrawal_mode: str = 'loan',  # 'loan' or 'dividend'
+        contribution_end_year: Optional[int] = None,
+        contribution_change_year: Optional[int] = None,
+        contribution_change_factor: float = 1.0
     ) -> SimulationResult:
         """
         Run Monte Carlo simulation.
@@ -201,10 +206,20 @@ class MonteCarloSimulator:
                 year_payout_gross = 0.0
                 
                 for month in range(first_month, 12):
-                    # Monthly contribution (same for all months)
-                    monthly_contrib = sum(c.monthly_amount for c in self.contributions)
+                for month in range(first_month, 12):
+                    # Monthly contribution calculation
+                    current_monthly_contrib = sum(c.monthly_amount for c in self.contributions)
                     
-                    balance += monthly_contrib
+                    # Logic 1: Stop Contributions
+                    if contribution_end_year is not None and year >= contribution_end_year:
+                        current_monthly_contrib = 0.0
+                    
+                    # Logic 2: Change Contribution Rate
+                    elif (contribution_change_year is not None and 
+                          year >= contribution_change_year):
+                        current_monthly_contrib *= contribution_change_factor
+                    
+                    balance += current_monthly_contrib
                     
                     # Deduct monthly share of annual costs
                     balance -= (annual_costs / 12)
@@ -287,7 +302,12 @@ def calculate_loan_evolution(
     rental: Optional[RentalProperty] = None,
     start_month: int = 1,
     payouts: list[float] = None,
-    withdrawal_mode: str = 'dividend'
+    start_month: int = 1,
+    payouts: list[float] = None,
+    withdrawal_mode: str = 'dividend',
+    contribution_end_year: Optional[int] = None,
+    contribution_change_year: Optional[int] = None,
+    contribution_change_factor: float = 1.0
 ) -> dict[str, list[float]]:
     """
     Calculate evolution of loans (principal + contributions).
@@ -319,6 +339,14 @@ def calculate_loan_evolution(
         # 1. Add Contributions
         for person in current_loans:
             monthly = contrib_map.get(person, 0)
+            
+            # Logic: Stop/Change Contributions (Same as simulate)
+            if contribution_end_year is not None and year >= contribution_end_year:
+                monthly = 0.0
+            elif (contribution_change_year is not None and 
+                  year >= contribution_change_year):
+                monthly *= contribution_change_factor
+                
             current_loans[person] += monthly * months
             
         # 2. Subtract Rental Repayment (Mart/Kerli)
