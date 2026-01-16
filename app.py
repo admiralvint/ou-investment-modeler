@@ -143,16 +143,16 @@ def run_simulation():
         # Parse rental configuration
         include_rental = params.get('include_rental', False)
         repay_mortgage = params.get('repay_mortgage', False)
-        repayment_year = int(params.get('sale_year', 2030) or 2030)
+        repayment_year = int(params.get('sale_year') or 2030)
         
         rental = None
         if include_rental:
-            mortgage_balance = float(params.get('mortgage_balance', 0) or 0)
-            monthly_payment = float(params.get('mortgage_payment', 0) or 0)
-            rental_income = float(params.get('rental_income', 0) or 0)
-            interest_rate = float(params.get('mortgage_rate', 0) or 0) / 100
-            adult1_share = float(params.get('adult1_mortgage_share', mortgage_balance / 2) or mortgage_balance / 2)
-            adult2_share = float(params.get('adult2_mortgage_share', mortgage_balance / 2) or mortgage_balance / 2)
+            mortgage_balance = float(params.get('mortgage_balance') or 0)
+            monthly_payment = float(params.get('mortgage_payment') or 0)
+            rental_income = float(params.get('rental_income') or 0)
+            interest_rate = float(params.get('mortgage_rate') or 0) / 100
+            adult1_share = float(params.get('adult1_mortgage_share') or mortgage_balance / 2)
+            adult2_share = float(params.get('adult2_mortgage_share') or mortgage_balance / 2)
             
             rental = RentalProperty(
                 include=True,
@@ -175,9 +175,9 @@ def run_simulation():
             seed=None  # Random each time
         )
         
-        start_year = int(params.get('start_year', 2026))
-        start_month = int(params.get('start_month', 1))
-        end_year = int(params.get('end_year', 2040))
+        start_year = int(params.get('start_year') or 2026)
+        start_month = int(params.get('start_month') or 1)
+        end_year = int(params.get('end_year') or 2040)
         
         result = simulator.simulate(
             start_year=start_year,
@@ -185,13 +185,13 @@ def run_simulation():
             end_year=end_year,
             starting_capital=starting_capital,
             starting_loans=starting_loans,
-            annual_costs=float(params.get('annual_costs', 0)),
-            withdrawal_rate=float(params.get('withdrawal_rate', 0)) / 100,
-            withdrawal_start_year=int(params.get('withdrawal_start_year', 2035)),
+            annual_costs=float(params.get('annual_costs') or 0),
+            withdrawal_rate=float(params.get('withdrawal_rate') or 0) / 100,
+            withdrawal_start_year=int(params.get('withdrawal_start_year') or 2035),
             withdrawal_mode=params.get('withdrawal_mode', 'loan'),
             contribution_end_year=int(params['contribution_end_year']) if params.get('contribution_end_year') else None,
             contribution_change_year=int(params['contribution_change_year']) if params.get('contribution_change_year') else None,
-            contribution_change_factor=float(params.get('contribution_change_factor', 1.0))
+            contribution_change_factor=float(params.get('contribution_change_factor') or 1.0)
         )
         
         # Calculate loan evolution
@@ -206,7 +206,7 @@ def run_simulation():
             withdrawal_mode=params.get('withdrawal_mode', 'dividend'),
             contribution_end_year=int(params['contribution_end_year']) if params.get('contribution_end_year') else None,
             contribution_change_year=int(params['contribution_change_year']) if params.get('contribution_change_year') else None,
-            contribution_change_factor=float(params.get('contribution_change_factor', 1.0))
+            contribution_change_factor=float(params.get('contribution_change_factor') or 1.0)
         )
         
         # Calculate total loans per year
