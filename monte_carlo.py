@@ -153,8 +153,6 @@ class MonteCarloSimulator:
         annual_costs: float = 0.0,
         withdrawal_rate: float = 0.0,  # 0.04 = 4%
         withdrawal_start_year: int = 2035,
-        withdrawal_rate: float = 0.0,  # 0.04 = 4%
-        withdrawal_start_year: int = 2035,
         withdrawal_mode: str = 'loan',  # 'loan' or 'dividend'
         contribution_end_year: Optional[int] = None,
         contribution_change_year: Optional[int] = None,
@@ -205,7 +203,7 @@ class MonteCarloSimulator:
                 
                 year_payout_gross = 0.0
                 
-                for month in range(first_month, 12):
+
                 for month in range(first_month, 12):
                     # Monthly contribution calculation
                     current_monthly_contrib = sum(c.monthly_amount for c in self.contributions)
@@ -302,8 +300,7 @@ def calculate_loan_evolution(
     rental: Optional[RentalProperty] = None,
     start_month: int = 1,
     payouts: list[float] = None,
-    start_month: int = 1,
-    payouts: list[float] = None,
+
     withdrawal_mode: str = 'dividend',
     contribution_end_year: Optional[int] = None,
     contribution_change_year: Optional[int] = None,
