@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="et">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OÜ Investeerimismodelleerija</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🏦 OÜ Investeerimismodelleerija</h1>
+            <p class="subtitle">Monte Carlo simulatsioon reaalsete ETF andmetega</p>
+        </header>
+
+        <main>
+            <div class="grid">
+                <!-- Left Column: Inputs -->
+                <div class="input-panel">
+                    <section class="card">
+                        <h2>💼 Algkapital</h2>
+                        <div class="input-group">
+                            <label for="starting_capital">OÜ algbilanss (€)</label>
+                            <input type="number" id="starting_capital" placeholder="nt 50000" min="0" step="1000">
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>👥 Täiskasvanud</h2>
+                        <div id="adults_container">
+                            <div class="person-row" data-person="adult_1">
+                                <div class="input-group">
+                                    <label>Täiskasvanu 1 sissemakse (€/kuu)</label>
+                                    <input type="number" class="monthly-input" placeholder="nt 500" min="0" step="50">
+                                </div>
+                                <div class="input-group">
+                                    <label>Alglaen (€)</label>
+                                    <input type="number" class="loan-input" placeholder="nt 10000" min="0" step="1000">
+                                </div>
+                            </div>
+                            <div class="person-row" data-person="adult_2">
+                                <div class="input-group">
+                                    <label>Täiskasvanu 2 sissemakse (€/kuu)</label>
+                                    <input type="number" class="monthly-input" placeholder="nt 500" min="0" step="50">
+                                </div>
+                                <div class="input-group">
+                                    <label>Alglaen (€)</label>
+                                    <input type="number" class="loan-input" placeholder="nt 10000" min="0" step="1000">
+                                </div>
+                                <button type="button" class="remove-btn" onclick="removePerson(this)">✕</button>
+                            </div>
+                        </div>
+                        <button type="button" class="add-btn" onclick="addAdult()">+ Lisa täiskasvanu</button>
+                    </section>
+
+                    <section class="card">
+                        <h2>👶 Lapsed</h2>
+                        <div id="children_container">
+                            <!-- Children will be added dynamically -->
+                        </div>
+                        <button type="button" class="add-btn" onclick="addChild()">+ Lisa laps</button>
+                    </section>
+
+                    <section class="card">
+                        <div class="total-display">
+                            Sissemaksed kokku: <span id="total_monthly">€0</span>/kuu
+                        </div>
+                        <div class="total-display"
+                            style="margin-top: 0.5rem; font-size: 0.9em; color: var(--text-secondary);">
+                            Alglaen kokku: <span id="total_loans">€0</span>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>📈 ETF Portfell</h2>
+                        <p class="hint">Sisesta ISIN ja jaotus %. Kokku peab olema 100%.</p>
+
+                        <div class="etf-row">
+                            <div class="input-group">
+                                <label for="etf1_isin">ETF 1 ISIN</label>
+                                <input type="text" id="etf1_isin" placeholder="nt IE00BK5BQT80">
+                                <span class="etf-name" id="etf1_name"></span>
+                            </div>
+                            <div class="input-group small">
+                                <label for="etf1_allocation">%</label>
+                                <input type="number" id="etf1_allocation" value="100" min="0" max="100">
+                            </div>
+                        </div>
+
+                        <div class="etf-row">
+                            <div class="input-group">
+                                <label for="etf2_isin">ETF 2 ISIN</label>
+                                <input type="text" id="etf2_isin" placeholder="Jäta tühjaks kui ei soovi">
+                                <span class="etf-name" id="etf2_name"></span>
+                            </div>
+                            <div class="input-group small">
+                                <label for="etf2_allocation">%</label>
+                                <input type="number" id="etf2_allocation" value="0" min="0" max="100">
+                            </div>
+                        </div>
+
+                        <div class="etf-row">
+                            <div class="input-group">
+                                <label for="etf3_isin">ETF 3 ISIN</label>
+                                <input type="text" id="etf3_isin" placeholder="Jäta tühjaks kui ei soovi">
+                                <span class="etf-name" id="etf3_name"></span>
+                            </div>
+                            <div class="input-group small">
+                                <label for="etf3_allocation">%</label>
+                                <input type="number" id="etf3_allocation" value="0" min="0" max="100">
+                            </div>
+                        </div>
+
+                        <div class="allocation-status" id="allocation_status">
+                            Jaotus: <span id="total_allocation">100%</span>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>🏠 Üürikorter (valikuline)</h2>
+                        <div class="input-group checkbox-group">
+                            <input type="checkbox" id="include_rental">
+                            <label for="include_rental">Kaasa üürikorter</label>
+                        </div>
+
+                        <div class="rental-options" id="rental_options" style="display: none;">
+                            <div class="input-group">
+                                <label for="mortgage_balance">Hüpoteegi jääk (€)</label>
+                                <input type="number" id="mortgage_balance" placeholder="nt 100000" min="0" step="1000">
+                            </div>
+                            <div class="input-group">
+                                <label for="mortgage_payment">Hüpoteegi makse (€/kuu)</label>
+                                <input type="number" id="mortgage_payment" placeholder="nt 500" min="0" step="50">
+                            </div>
+                            <div class="input-group">
+                                <label for="rental_income">Üüritulu (€/kuu)</label>
+                                <input type="number" id="rental_income" placeholder="nt 800" min="0" step="50">
+                            </div>
+                            <div class="input-group">
+                                <label for="mortgage_rate">Intressimäär (%)</label>
+                                <input type="number" id="mortgage_rate" placeholder="nt 4" min="0" max="20" step="0.1">
+                            </div>
+
+                            <hr style="border-color: var(--border-color); margin: 1rem 0;">
+
+                            <div class="input-group radio-group">
+                                <input type="radio" id="keep_rental" name="rental_decision" value="keep" checked>
+                                <label for="keep_rental">Jätka hüpoteegi maksmist isiklikult</label>
+                            </div>
+                            <div class="input-group radio-group">
+                                <input type="radio" id="sell_rental" name="rental_decision" value="sell">
+                                <label for="sell_rental">Maksa hüpoteek tagasi OÜ-st</label>
+                            </div>
+
+                            <div id="mortgage_repay_options" style="display: none;">
+                                <p class="hint mortgage-hint">
+                                    Hüpoteegi jääk arvestatakse maha täiskasvanute laenudest võrdselt.
+                                </p>
+
+                                <div class="input-group">
+                                    <label for="adult1_mortgage_share">Täiskasvanu 1 osa (€)</label>
+                                    <input type="number" id="adult1_mortgage_share" placeholder="nt 50000" min="0"
+                                        step="1000">
+                                </div>
+                                <div class="input-group">
+                                    <label for="adult2_mortgage_share">Täiskasvanu 2 osa (€)</label>
+                                    <input type="number" id="adult2_mortgage_share" placeholder="nt 50000" min="0"
+                                        step="1000">
+                                </div>
+
+                                <div class="input-group">
+                                    <label for="sale_year">Tagasimakse aasta</label>
+                                    <input type="number" id="sale_year" placeholder="nt 2030" min="2026" max="2050">
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="card">
+                        <h2>📅 Periood</h2>
+                        <div class="input-group inline">
+                            <label for="start_year">Algus</label>
+                            <input type="number" id="start_year" value="2026" min="2024" max="2040">
+                        </div>
+                        <div class="input-group inline">
+                            <label for="start_month">Alguskuu</label>
+                            <select id="start_month">
+                                <option value="1">Jaanuar</option>
+                                <option value="2">Veebruar</option>
+                                <option value="3">Märts</option>
+                                <option value="4">Aprill</option>
+                                <option value="5">Mai</option>
+                                <option value="6">Juuni</option>
+                                <option value="7">Juuli</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">Oktoober</option>
+                                <option value="11">November</option>
+                                <option value="12">Detsember</option>
+                            </select>
+                        </div>
+                        <div class="input-group inline">
+                            <label for="end_year">Lõpp</label>
+                            <input type="number" id="end_year" value="2040" min="2026" max="2060">
+                        </div>
+                    </section>
+
+                    <button id="simulate_btn" class="primary-btn">
+                        🚀 Käivita simulatsioon
+                    </button>
+                </div>
+
+                <!-- Right Column: Results -->
+                <div class="results-panel">
+                    <section class="card results-card">
+                        <h2>📊 Simulatsiooni tulemused</h2>
+                        <div id="loading" class="loading hidden">
+                            <div class="spinner"></div>
+                            <p>Simulatsioon käib... (10,000 stsenaariumit)</p>
+                        </div>
+
+                        <div id="results" class="hidden">
+                            <div class="scenario-selector">
+                                <label for="main_scenario">Vali stsenaarium:</label>
+                                <select id="main_scenario" class="main-scenario-dropdown">
+                                    <option value="p2">P2 (Väga pessimistlik) - Halvim 2%</option>
+                                    <option value="p10">P10 (Pessimistlik) - Halvim 10%</option>
+                                    <option value="p50" selected>P50 (Mediaan) - Tõenäoline tulemus</option>
+                                    <option value="p90">P90 (Optimistlik) - Parim 10%</option>
+                                    <option value="p98">P98 (Väga optimistlik) - Parim 2%</option>
+                                    <option value="mean">Keskmine (deterministlik)</option>
+                                </select>
+                                <div style="margin-top: 10px; padding: 0 5px;">
+                                    <div id="slider_value_display"
+                                        style="text-align: center; margin-bottom: 5px; font-weight: bold; color: var(--accent-blue); font-size: 0.9em;">
+                                        Oodatav tootlus: Teadmata
+                                    </div>
+                                    <input type="range" id="scenario_slider" min="1" max="99" value="50" step="1"
+                                        style="width: 100%; accent-color: var(--accent-blue);">
+                                    <div
+                                        style="display: flex; justify-content: space-between; font-size: 0.8em; color: var(--text-secondary); margin-top: 5px;">
+                                        <span>Min</span>
+                                        <span>Max</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="stats-grid-2">
+                                <div class="main-stat-card">
+                                    <div class="stat-label">Lõppbilanss (<span id="scenario_label">P50</span>)</div>
+                                    <div class="stat-value" id="main_final_value">-</div>
+                                    <div class="stat-comparison">
+                                        <span class="comparison-item pessimistic">P10: <span
+                                                id="p10_compare">-</span></span>
+                                        <span class="comparison-item optimistic">P90: <span
+                                                id="p90_compare">-</span></span>
+                                    </div>
+                                </div>
+                                <div class="main-stat-card">
+                                    <div class="stat-label">Potentsiaalne kasum (Bilanss - Laenud)</div>
+                                    <div class="stat-value net-profit" id="main_profit_value">-</div>
+                                    <div class="stat-comparison">
+                                        <span class="comparison-item">OÜ väärtus pärast laenude tagastamist</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="portfolio-stats">
+                                <span>Portfelli oodatav tootlus: <strong id="expected_return">-</strong></span>
+                                <span>Volatiilsus: <strong id="expected_volatility">-</strong></span>
+                                <span>Realiseerunud tootlus (<span id="realized_scenario">P50</span>): <strong
+                                        id="realized_return">-</strong></span>
+                            </div>
+
+                            <div class="chart-container">
+                                <canvas id="projection_chart"></canvas>
+                            </div>
+
+                            <div class="chart-container">
+                                <h3>Kasumid (bilanss - laenud)</h3>
+                                <canvas id="profit_chart"></canvas>
+                            </div>
+
+                            <div class="loan-table-container">
+                                <h3>📋 Laenude saldod (maksuvaba väljavõtmine)</h3>
+                                <p class="hint">Need summad saab OÜ-st laenu tagasimaksena maksuvabalt välja võtta.</p>
+                                <div class="table-scroll">
+                                    <table id="loan_table">
+                                        <thead>
+                                            <tr id="loan_table_header">
+                                                <th>Aasta</th>
+                                                <!-- Person headers will be added dynamically -->
+                                                <th>Kokku</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="loan_table_body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="balance-table-container">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <h3>📊 Bilansi koostis aasta kaupa</h3>
+                                    <label style="font-size: 0.9em; cursor: pointer; color: var(--text-secondary);">
+                                        <input type="checkbox" id="show_cumulative_cols" checked
+                                            onchange="updateAllResults()">
+                                        Näita kumulatiivseid veerge
+                                    </label>
+                                </div>
+                                <div class="table-scroll">
+                                    <table id="balance_table">
+                                        <thead>
+                                            <tr>
+                                                <th>Aasta</th>
+                                                <th>Algbilanss</th>
+                                                <th>Sissemaksed</th>
+                                                <th id="header_cum_contrib">Kum. sissem.</th>
+                                                <th id="rental_header" style="display:none;">Üüritulu</th>
+                                                <th>Tootlus</th>
+                                                <th id="header_cum_return">Kum. tootlus</th>
+                                                <th id="mortgage_header" style="display:none;">Hüpoteek</th>
+                                                <th>Lõppbilanss</th>
+                                                <th>Potentsiaalne ärikasum</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="balance_table_body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="no_results" class="no-results">
+                            Vajuta "Käivita simulatsioon" tulemuste nägemiseks
+                        </div>
+
+                        <div id="error" class="error hidden"></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Monte Carlo simulatsioon 10,000 stsenaariumiga • Andmed Yahoo Finance'ist</p>
+        </footer>
+    </div>
+
+    <script>
+        let projectionChart = null;
+        let profitChart = null;
+        let lastSimData = null;
+        let adultCount = 2;
+        let childCount = 0;
+
+        // Add adult
+        function addAdult() {
+            adultCount++;
+            const container = document.getElementById('adults_container');
+            const div = document.createElement('div');
+            div.className = 'person-row';
+            div.setAttribute('data-person', 'adult_' + adultCount);
+            div.innerHTML = `
+                <div class="input-group">
+                    <label>Täiskasvanu ${adultCount} sissemakse (€/kuu)</label>
+                    <input type="number" class="monthly-input" placeholder="nt 500" min="0" step="50">
+                </div>
+                <div class="input-group">
+                    <label>Alglaen (€)</label>
+                    <input type="number" class="loan-input" placeholder="nt 10000" min="0" step="1000">
+                </div>
+                <button type="button" class="remove-btn" onclick="removePerson(this)">✕</button>
+            `;
+            container.appendChild(div);
+            updateTotalMonthly();
+        }
+
+        // Add child
+        function addChild() {
+            childCount++;
+            const container = document.getElementById('children_container');
+            const div = document.createElement('div');
+            div.className = 'person-row';
+            div.setAttribute('data-person', 'child_' + childCount);
+            div.innerHTML = `
+                <div class="input-group">
+                    <label>Laps ${childCount} sissemakse (€/kuu)</label>
+                    <input type="number" class="monthly-input" placeholder="nt 100" min="0" step="50">
+                </div>
+                <div class="input-group">
+                    <label>Alglaen (€)</label>
+                    <input type="number" class="loan-input" placeholder="nt 5000" min="0" step="1000">
+                </div>
+                <button type="button" class="remove-btn" onclick="removePerson(this)">✕</button>
+            `;
+            container.appendChild(div);
+            updateTotalMonthly();
+        }
+
+        // Remove person
+        function removePerson(btn) {
+            btn.parentElement.remove();
+            updateTotalMonthly();
+        }
+
+        // Get all persons data
+        function getPersonsData() {
+            const persons = [];
+            document.querySelectorAll('.person-row').forEach((row, idx) => {
+                const monthlyInput = row.querySelector('.monthly-input');
+                const loanInput = row.querySelector('.loan-input');
+                const personType = row.getAttribute('data-person');
+                persons.push({
+                    name: personType,
+                    monthly: parseFloat(monthlyInput.value) || 0,
+                    loan: parseFloat(loanInput.value) || 0
+                });
+            });
+            return persons;
+        }
+
+        // Update all results based on selected scenario
+        function updateAllResults() {
+            if (!lastSimData) return;
+
+            const scenario = document.getElementById('main_scenario').value;
+            const sim = lastSimData.simulation;
+            const loans = lastSimData.total_loans;
+            const lastIdx = sim.years.length - 1;
+
+            // Get data for selected scenario
+            let balanceData;
+            let scenarioLabel;
+
+            if (scenario === 'mean') {
+                balanceData = sim.mean;
+                scenarioLabel = 'Keskmine';
+            } else if (sim.percentiles && sim.percentiles[scenario]) {
+                balanceData = sim.percentiles[scenario];
+                scenarioLabel = scenario.toUpperCase();
+            } else if (sim[scenario]) {
+                // Fallback for old fixed scenarios
+                balanceData = sim[scenario];
+                scenarioLabel = scenario.toUpperCase();
+            } else {
+                balanceData = sim.p50 || sim.percentiles['p50'];
+                scenarioLabel = 'P50';
+            }
+
+            // Update main stat card
+            document.getElementById('scenario_label').textContent = scenarioLabel;
+            document.getElementById('main_final_value').textContent = '€' + Math.round(balanceData[lastIdx]).toLocaleString();
+            document.getElementById('p10_compare').textContent = '€' + Math.round(sim.p10[lastIdx]).toLocaleString();
+            document.getElementById('p10_compare').textContent = '€' + Math.round(sim.p10[lastIdx]).toLocaleString();
+            document.getElementById('p90_compare').textContent = '€' + Math.round(sim.p90[lastIdx]).toLocaleString();
+
+            const potentialProfit = Math.round(balanceData[lastIdx] - loans[lastIdx]);
+            const profitEl = document.getElementById('main_profit_value');
+            profitEl.textContent = '€' + potentialProfit.toLocaleString();
+            profitEl.className = potentialProfit >= 0 ? 'stat-value net-profit' : 'stat-value negative';
+
+            // Calculate realized return (CAGR approximation)
+            const startBalance = lastSimData.starting_capital || lastSimData.balance_breakdown[0].start_balance;
+            const endBalance = balanceData[lastIdx];
+            const years = sim.years.length;
+            const totalContribs = lastSimData.balance_breakdown.reduce((sum, r) => sum + r.contributions + r.rental_income, 0);
+            const avgInvested = startBalance + totalContribs / 2;
+            const realizedReturn = ((endBalance / avgInvested) ** (1 / years) - 1) * 100;
+            document.getElementById('realized_scenario').textContent = scenarioLabel;
+            document.getElementById('realized_return').textContent = realizedReturn.toFixed(1) + '%/aasta';
+
+            // Update slider dynamic display
+            document.getElementById('slider_value_display').textContent = `Oodatav tootlus: ${realizedReturn.toFixed(1)}% / aasta (${scenarioLabel})`;
+
+            // Calculate profits for selected scenario
+            const profits = balanceData.map((bal, i) => Math.round(bal - loans[i]));
+
+            // Update profit chart
+            profitChart.data.datasets[0].data = profits;
+            profitChart.data.datasets[0].label = 'Kasumid (' + scenarioLabel + ')';
+            profitChart.data.datasets[0].backgroundColor = profits.map(v =>
+                v >= 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)'
+            );
+            profitChart.update();
+
+            // Update projection chart highlight
+            projectionChart.data.datasets.forEach((ds, idx) => {
+                if (scenario === 'p90' && idx === 0) {
+                    ds.borderWidth = 4;
+                } else if (scenario === 'p50' && idx === 1) {
+                    ds.borderWidth = 4;
+                } else if (scenario === 'p10' && idx === 2) {
+                    ds.borderWidth = 4;
+                } else if (idx < 3) {
+                    ds.borderWidth = 2;
+                }
+            });
+            projectionChart.update();
+
+            // Update balance breakdown table
+            updateBalanceTable(balanceData, scenarioLabel);
+        }
+
+        // Update balance breakdown table
+        function updateBalanceTable(balanceData, scenarioLabel) {
+            const balanceTableBody = document.getElementById('balance_table_body');
+            balanceTableBody.innerHTML = '';
+
+            const sim = lastSimData.simulation;
+            const breakdown = lastSimData.balance_breakdown;
+            const loans = lastSimData.total_loans || [];
+            const startingCapital = lastSimData.starting_capital || breakdown[0].start_balance;
+
+            // Check if rental/mortgage columns should be shown
+            const includeRental = document.getElementById('include_rental').checked;
+            const repayMortgage = document.getElementById('sell_rental').checked;
+            const showRentalCol = includeRental && repayMortgage;
+            const showMortgageCol = includeRental && repayMortgage;
+
+            // Toggle visibility based on checkbox
+            const showCumulative = document.getElementById('show_cumulative_cols').checked;
+            document.getElementById('header_cum_contrib').style.display = showCumulative ? '' : 'none';
+            document.getElementById('header_cum_return').style.display = showCumulative ? '' : 'none';
+
+            // Show/hide header columns
+            document.getElementById('rental_header').style.display = showRentalCol ? '' : 'none';
+            document.getElementById('mortgage_header').style.display = showMortgageCol ? '' : 'none';
+
+            let cumulativeReturn = 0;
+            let cumulativeContribs = 0;
+
+            for (let i = 0; i < breakdown.length; i++) {
+                const row = breakdown[i];
+                const tr = document.createElement('tr');
+
+                const startBalance = i === 0 ? startingCapital : Math.round(balanceData[i - 1]);
+                const endBalance = Math.round(balanceData[i]);
+                const knownChanges = row.contributions + row.rental_income + row.mortgage_deduction;
+                const investmentReturn = endBalance - startBalance - knownChanges;
+
+                cumulativeReturn += investmentReturn;
+                cumulativeContribs += row.contributions;
+
+                const mortgageClass = row.mortgage_deduction < 0 ? 'negative' : '';
+                const mortgageValue = row.mortgage_deduction !== 0 ? '€' + row.mortgage_deduction.toLocaleString() : '-';
+                const rentalValue = row.rental_income > 0 ? '+€' + row.rental_income.toLocaleString() : '-';
+                const returnSign = investmentReturn >= 0 ? '+' : '';
+                const cumReturnSign = cumulativeReturn >= 0 ? '+' : '';
+
+                // Calculate Profit
+                const currentLoan = loans[i] || 0;
+                const profit = endBalance - currentLoan;
+                const profitSign = profit >= 0 ? '+' : '';
+
+                let rowHtml =
+                    '<td><strong>' + row.year + '</strong></td>' +
+                    '<td>€' + startBalance.toLocaleString() + '</td>' +
+                    '<td class="positive">+€' + row.contributions.toLocaleString() + '</td>';
+
+                if (showCumulative) {
+                    rowHtml += '<td class="positive">€' + Math.round(cumulativeContribs).toLocaleString() + '</td>';
+                }
+
+                if (showRentalCol) {
+                    rowHtml += '<td class="' + (row.rental_income > 0 ? 'positive' : '') + '">' + rentalValue + '</td>';
+                }
+
+                rowHtml +=
+                    '<td class="' + (investmentReturn >= 0 ? 'positive' : 'negative') + '">' + returnSign + '€' + investmentReturn.toLocaleString() + '</td>';
+
+                if (showCumulative) {
+                    rowHtml += '<td class="' + (cumulativeReturn >= 0 ? 'positive' : 'negative') + '">' + cumReturnSign + '€' + Math.round(cumulativeReturn).toLocaleString() + '</td>';
+                }
+
+                if (showMortgageCol) {
+                    rowHtml += '<td class="' + mortgageClass + '">' + mortgageValue + '</td>';
+                }
+
+                rowHtml += '<td><strong>€' + endBalance.toLocaleString() + '</strong></td>';
+
+                // Potential Profit Column
+                rowHtml += '<td class="' + (profit >= 0 ? 'positive' : 'negative') + '"><strong>' + profitSign + '€' + profit.toLocaleString() + '</strong></td>';
+
+                tr.innerHTML = rowHtml;
+                balanceTableBody.appendChild(tr);
+            }
+        }
+
+        // Update total monthly contribution display
+        function updateTotalMonthly() {
+            const persons = getPersonsData();
+            const totalMonthly = persons.reduce((sum, p) => sum + p.monthly, 0);
+            const totalLoans = persons.reduce((sum, p) => sum + p.loan, 0);
+
+            document.getElementById('total_monthly').textContent = '€' + totalMonthly.toLocaleString();
+            document.getElementById('total_loans').textContent = '€' + totalLoans.toLocaleString();
+        }
+
+        // Update allocation status
+        function updateAllocationStatus() {
+            const alloc1 = parseFloat(document.getElementById('etf1_allocation').value) || 0;
+            const alloc2 = parseFloat(document.getElementById('etf2_allocation').value) || 0;
+            const alloc3 = parseFloat(document.getElementById('etf3_allocation').value) || 0;
+            const total = alloc1 + alloc2 + alloc3;
+
+            const statusEl = document.getElementById('allocation_status');
+            document.getElementById('total_allocation').textContent = total + '%';
+
+            if (total === 100) {
+                statusEl.className = 'allocation-status valid';
+            } else {
+                statusEl.className = 'allocation-status invalid';
+            }
+        }
+
+        // Fetch ETF info
+        async function fetchETFInfo(num) {
+            const isin = document.getElementById(`etf${num}_isin`).value.trim();
+            const nameEl = document.getElementById(`etf${num}_name`);
+
+            if (!isin) {
+                nameEl.textContent = '';
+                return;
+            }
+
+            nameEl.textContent = 'Laadin...';
+
+            try {
+                const response = await fetch(`/api/etf/${isin}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    nameEl.textContent = `${data.data.name} (${data.data.annual_return}% / ${data.data.annual_volatility}% vol)`;
+                    nameEl.className = 'etf-name valid';
+                } else {
+                    nameEl.textContent = 'ETF ei leitud';
+                    nameEl.className = 'etf-name invalid';
+                }
+            } catch (e) {
+                nameEl.textContent = 'Viga laadimisel';
+                nameEl.className = 'etf-name invalid';
+            }
+        }
+
+        // Toggle rental options
+        function toggleRentalOptions() {
+            const include = document.getElementById('include_rental').checked;
+            const options = document.getElementById('rental_options');
+            options.style.display = include ? 'block' : 'none';
+        }
+
+        // Toggle mortgage repay options
+        function toggleMortgageRepayOptions() {
+            const repay = document.getElementById('sell_rental').checked;
+            const options = document.getElementById('mortgage_repay_options');
+            options.style.display = repay ? 'block' : 'none';
+        }
+
+        // Run simulation
+        async function runSimulation() {
+            const btn = document.getElementById('simulate_btn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const noResults = document.getElementById('no_results');
+            const error = document.getElementById('error');
+
+            btn.disabled = true;
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            noResults.classList.add('hidden');
+            error.classList.add('hidden');
+
+            // Gather persons data
+            const persons = getPersonsData();
+
+            const params = {
+                starting_capital: document.getElementById('starting_capital').value || 0,
+                persons: persons,
+                etf1_isin: document.getElementById('etf1_isin').value,
+                etf1_allocation: document.getElementById('etf1_allocation').value,
+                etf2_isin: document.getElementById('etf2_isin').value,
+                etf2_allocation: document.getElementById('etf2_allocation').value,
+                etf3_isin: document.getElementById('etf3_isin').value,
+                etf3_allocation: document.getElementById('etf3_allocation').value,
+                include_rental: document.getElementById('include_rental').checked,
+                mortgage_balance: document.getElementById('mortgage_balance').value,
+                mortgage_payment: document.getElementById('mortgage_payment').value,
+                rental_income: document.getElementById('rental_income').value,
+                mortgage_rate: document.getElementById('mortgage_rate').value,
+                repay_mortgage: document.getElementById('sell_rental').checked,
+                adult1_mortgage_share: document.getElementById('adult1_mortgage_share').value,
+                adult2_mortgage_share: document.getElementById('adult2_mortgage_share').value,
+                sale_year: document.getElementById('sale_year').value,
+                start_year: document.getElementById('start_year').value,
+                start_month: document.getElementById('start_month').value,
+                end_year: document.getElementById('end_year').value
+            };
+
+            try {
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    error.textContent = 'Viga: ' + data.error;
+                    error.classList.remove('hidden');
+                }
+            } catch (e) {
+                error.textContent = 'Ühenduse viga: ' + e.message;
+                error.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+
+        // Display simulation results
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            const sim = data.simulation;
+
+            lastSimData = data;
+            document.getElementById('main_scenario').value = 'p50';
+
+            const lastIdx = sim.years.length - 1;
+            document.getElementById('scenario_label').textContent = 'P50';
+            document.getElementById('main_final_value').textContent = '€' + Math.round(sim.p50[lastIdx]).toLocaleString();
+            document.getElementById('p10_compare').textContent = '€' + Math.round(sim.p10[lastIdx]).toLocaleString();
+            document.getElementById('p90_compare').textContent = '€' + Math.round(sim.p90[lastIdx]).toLocaleString();
+
+            document.getElementById('expected_return').textContent = data.portfolio.expected_return + '%';
+            document.getElementById('expected_volatility').textContent = data.portfolio.expected_volatility + '%';
+
+            // Projection chart
+            const ctx = document.getElementById('projection_chart').getContext('2d');
+
+            if (projectionChart) {
+                projectionChart.destroy();
+            }
+
+            projectionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sim.years,
+                    datasets: [
+                        {
+                            label: 'P90 (Optimistlik)',
+                            data: sim.p90,
+                            borderColor: 'rgba(34, 197, 94, 0.8)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: '+1',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'P50 (Mediaan)',
+                            data: sim.p50,
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: '+1',
+                            borderWidth: 3,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'P10 (Pessimistlik)',
+                            data: sim.p10,
+                            borderColor: 'rgba(239, 68, 68, 0.8)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: false,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Laenud kokku',
+                            data: data.total_loans,
+                            borderColor: 'rgba(156, 163, 175, 0.8)',
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'OÜ bilanss (Monte Carlo simulatsioon)',
+                            color: '#e5e7eb'
+                        },
+                        legend: {
+                            labels: { color: '#e5e7eb' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#9ca3af',
+                                callback: value => '€' + (value / 1000).toFixed(0) + 'k'
+                            },
+                            grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                        }
+                    }
+                }
+            });
+
+            // Profit chart
+            const profitCtx = document.getElementById('profit_chart').getContext('2d');
+
+            if (profitChart) {
+                profitChart.destroy();
+            }
+
+            profitChart = new Chart(profitCtx, {
+                type: 'bar',
+                data: {
+                    labels: sim.years,
+                    datasets: [{
+                        label: 'Kasumid (P50)',
+                        data: data.profits_p50,
+                        backgroundColor: data.profits_p50.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)'),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#9ca3af',
+                                callback: value => '€' + (value / 1000).toFixed(0) + 'k'
+                            },
+                            grid: { color: 'rgba(75, 85, 99, 0.3)' }
+                        }
+                    }
+                }
+            });
+
+            // Build loan table header dynamically
+            const loanHeaderRow = document.getElementById('loan_table_header');
+            loanHeaderRow.innerHTML = '<th>Aasta</th>';
+            const personNames = Object.keys(data.loan_evolution);
+            personNames.forEach(name => {
+                loanHeaderRow.innerHTML += `<th>${name}</th>`;
+            });
+            loanHeaderRow.innerHTML += '<th>Kokku</th>';
+
+            // Populate loan table
+            const loanTableBody = document.getElementById('loan_table_body');
+            loanTableBody.innerHTML = '';
+
+            const loans = data.loan_evolution;
+            for (let i = 0; i < sim.years.length; i++) {
+                const year = sim.years[i];
+                let total = 0;
+                let cells = `<td><strong>${year}</strong></td>`;
+
+                for (const name of personNames) {
+                    const val = loans[name][i];
+                    total += val;
+                    cells += `<td>€${Math.round(val).toLocaleString()}</td>`;
+                }
+                cells += `<td><strong>€${Math.round(total).toLocaleString()}</strong></td>`;
+
+                const row = document.createElement('tr');
+                row.innerHTML = cells;
+                loanTableBody.appendChild(row);
+            }
+
+            // Update balance table
+            updateBalanceTable(sim.p50, 'P50');
+
+            results.classList.remove('hidden');
+
+            // Ensure potential profit and other stats are updated immediately
+            updateAllResults();
+        }
+
+        // Event listeners
+        document.addEventListener('input', function (e) {
+            if (e.target.classList.contains('monthly-input') || e.target.classList.contains('loan-input')) {
+                updateTotalMonthly();
+            }
+        });
+
+        ['etf1_allocation', 'etf2_allocation', 'etf3_allocation'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateAllocationStatus);
+        });
+
+        document.getElementById('etf1_isin').addEventListener('blur', () => fetchETFInfo(1));
+        document.getElementById('etf2_isin').addEventListener('blur', () => fetchETFInfo(2));
+        document.getElementById('etf3_isin').addEventListener('blur', () => fetchETFInfo(3));
+
+        document.getElementById('include_rental').addEventListener('change', toggleRentalOptions);
+        document.getElementById('sell_rental').addEventListener('change', toggleMortgageRepayOptions);
+        document.getElementById('keep_rental').addEventListener('change', toggleMortgageRepayOptions);
+
+        // Slider synchronization
+        const slider = document.getElementById('scenario_slider');
+        const select = document.getElementById('main_scenario');
+
+        slider.addEventListener('input', function () {
+            const pVal = this.value;
+            const scenarioKey = 'p' + pVal;
+
+            // Add or update custom option
+            let customOpt = select.querySelector('option[class="custom-opt"]');
+            if (!customOpt) {
+                customOpt = document.createElement('option');
+                customOpt.className = 'custom-opt';
+                select.add(customOpt);
+            }
+            customOpt.value = scenarioKey;
+            customOpt.text = `P${pVal} (Kohandatud)`;
+            select.value = scenarioKey;
+
+            updateAllResults();
+        });
+
+        select.addEventListener('change', function () {
+            const val = this.value;
+            if (val.startsWith('p')) {
+                const num = parseInt(val.substring(1));
+                if (!isNaN(num)) {
+                    slider.value = num;
+                }
+            }
+            updateAllResults();
+        });
+
+        document.getElementById('main_scenario').addEventListener('change', updateAllResults);
+
+        document.getElementById('simulate_btn').addEventListener('click', runSimulation);
+
+        // Initialize
+        updateTotalMonthly();
+        updateAllocationStatus();
+    </script>
+</body>
+
+</html>
